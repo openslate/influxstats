@@ -53,6 +53,17 @@ def get_client(**kwargs):
     return statsd_client
 
 
+def get_metric(client, attr, extra):
+    def wrapper(name, *args, **kwargs):
+        full_name = '{},name={}'.format(attr, name)
+        if extra:
+            full_name = '{},{}'.format(full_name, extra)
+
+        return getattr(client, attr)(full_name, *args, **kwargs)
+
+    return wrapper
+
+
 def measure_function(client):
     """
     Decorator to measure a function
@@ -81,17 +92,6 @@ def measure_function(client):
         return wrapper
 
     return decorator
-
-
-def get_metric(client, attr, extra):
-    def wrapper(name, *args, **kwargs):
-        full_name = '{},name={}'.format(attr, name)
-        if extra:
-            full_name = '{},{}'.format(full_name, extra)
-
-        return getattr(client, attr)(full_name, *args, **kwargs)
-
-    return wrapper
 
 
 class StatsClient(statsd.StatsClient):
