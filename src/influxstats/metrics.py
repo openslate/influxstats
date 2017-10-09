@@ -14,14 +14,6 @@ from django.conf import settings
 CLIENTS = {}
 
 
-class StatsClient(statsd.StatsClient):
-    def measure_function(self):
-        """
-        Returns a decorator to measure the function being decorated
-        """
-        return measure_function(self)
-
-
 def get_cache_key(kwargs):
     """
     Returns a cache key from the given kwargs
@@ -100,6 +92,14 @@ def get_metric(client, attr, extra):
         return getattr(client, attr)(full_name, *args, **kwargs)
 
     return wrapper
+
+
+class StatsClient(statsd.StatsClient):
+    def measure_function(self):
+        """
+        Returns a decorator to measure the function being decorated
+        """
+        return measure_function(self)
 
 
 class StatsdWrapper(object):
