@@ -80,7 +80,7 @@ def measure_function(client):
         def wrapper(*args, **kwargs):
             _statsd.incr('calls')  # increment a counter for the function being called
 
-            # inject statsd into the function call if defined as a function param
+            # inject statsd into the function call if the function has a statsd kwarg
             if 'statsd' in fn.__code__.co_varnames:
                 kwargs.update({
                     'statsd': _statsd,
