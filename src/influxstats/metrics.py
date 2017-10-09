@@ -3,6 +3,9 @@
 metrics helpers
 """
 import functools
+import hashlib
+import json
+
 import statsd
 
 from django.conf import settings
@@ -13,15 +16,47 @@ CLIENTS = {}
 
 class StatsClient(statsd.StatsClient):
     def measure_function(self):
+        """
+        Returns a decorator to measure the function being decorated
+        """
         return measure_function(self)
 
 
-def get_client(prefix=None):
-    statsd_client = CLIENTS.get(prefix)
-    if statsd_client is None:
-        statsd_client = StatsClient('172.17.0.1', settings.STATSD_PORT, prefix=prefix)
+def get_cache_key(kwargs):
+    """
+    Returns a cache key from the given kwargs
 
-        CLIENTS[prefix] = statsd_client
+    This is simply a sha256 hexdigest of the keyword arguments
+
+    Args:
+        kwargs (dict): the arguments to build a cache key from
+
+    Returns:
+        str: the cache key
+    """
+    sha = hashlib.sha256()
+    sha.update(json.dumps(kwargs))
+
+    return sha.hexdigest()
+
+
+def get_client(**kwargs):
+    """
+    Returns a StatsClient instance
+
+    Args:
+        **kwargs: options passed directly to StatsClient
+
+    Returns:
+        StatsClient instance
+    """
+    cache_key = get_cache_key(kwargs)
+
+    statsd_client = CLIENTS.get(cache_key)
+    if statsd_client is None:
+        statsd_client = StatsClient(**kwargs)
+
+        CLIENTS[cache_key] = statsd_client
 
     return statsd_client
 
