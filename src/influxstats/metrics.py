@@ -8,13 +8,11 @@ import json
 
 import statsd
 
-from django.conf import settings
-
 # clients indexed by prefix
 CLIENTS = {}
 
 
-def get_cache_key(kwargs):
+def get_cache_key(args, kwargs):
     """
     Returns a cache key from the given kwargs
 
@@ -27,39 +25,51 @@ def get_cache_key(kwargs):
         str: the cache key
     """
     sha = hashlib.sha256()
-    sha.update(json.dumps(kwargs))
+    sha.update(json.dumps([args, kwargs]).encode('utf8'))
 
     return sha.hexdigest()
 
 
-def get_client(**kwargs):
+def get_client(service, module, **kwargs):
     """
     Returns a StatsClient instance
 
     Args:
+        service (str): name of the service this metric is coming from (aka: name of your app)
+        module (str): __name__ within the context this is called from
         **kwargs: options passed directly to StatsClient
 
     Returns:
         StatsClient instance
     """
-    cache_key = get_cache_key(kwargs)
+    cache_key = get_cache_key(module, kwargs)
 
     statsd_client = CLIENTS.get(cache_key)
     if statsd_client is None:
-        statsd_client = StatsClient(**kwargs)
+        statsd_client = StatsdClient(service, module, **kwargs)
 
         CLIENTS[cache_key] = statsd_client
 
     return statsd_client
 
 
-def get_metric(client, attr, extra):
+def get_metric(fn, tags):
+    """
+    Wraps the metric function to decorate with additional tags
+    """
     def wrapper(name, *args, **kwargs):
-        full_name = '{},name={}'.format(attr, name)
-        if extra:
-            full_name = '{},{}'.format(full_name, extra)
+        # the metric name starts as the name of the function itself
+        full_name = fn.__func__.__name__
 
-        return getattr(client, attr)(full_name, *args, **kwargs)
+        _tags = tags.copy()
+        _tags.update({
+            'name': name,
+        })
+
+        tags_s = ','.join([f'{k}={v}' for k, v in _tags.items()])
+        full_name = f'{full_name},{tags_s}'
+
+        return fn(full_name, *args, **kwargs)
 
     return wrapper
 
@@ -74,7 +84,7 @@ def measure_function(client):
         client (StatsdClient): statsd client instance
     """
     def decorator(fn):
-        _statsd = StatsdWrapper(client, fn.__name__)
+        _statsd = client
 
         @functools.wraps(fn)
         def wrapper(*args, **kwargs):
@@ -94,25 +104,27 @@ def measure_function(client):
     return decorator
 
 
-class StatsClient(statsd.StatsClient):
+class StatsdClient(statsd.StatsClient):
+    def __init__(self, service, module, **kwargs):
+        self.tags = {
+            'module': module,
+            'service': service,
+        }
+
+        super().__init__(**kwargs)
+
+    def __getattribute__(self, attr):
+        # attributes that should be fetched from this instance
+        if attr in ('__class__', 'measure_function', 'tags'):
+            return super().__getattribute__(attr)
+
+        fn = super().__getattribute__(attr)
+
+        # wrap the desired metric function
+        return get_metric(fn, self.tags)
+
     def measure_function(self):
         """
         Returns a decorator to measure the function being decorated
         """
         return measure_function(self)
-
-
-class StatsdWrapper(object):
-    def __init__(self, client, function_name=None):
-        self.client = client
-        self.function_name = function_name
-
-    def __getattribute__(self, attr):
-        client = super(StatsdWrapper, self).__getattribute__('client')
-        function_name = super(StatsdWrapper, self).__getattribute__('function_name')
-
-        extra = ''
-        if function_name:
-            extra = 'def={}'.format(function_name)
-
-        return get_metric(client, attr, extra)
