@@ -47,10 +47,11 @@ def get_client(service, module, **kwargs):
 
     statsd_client = CLIENTS.get(cache_key)
     if statsd_client is None:
-        tags = {
+        tags = kwargs.pop('tags', {})
+        tags.update({
             'module': module,
             'service': service,
-        }
+        })
 
         statsd_client = StatsClient(tags=tags, **kwargs)
 
