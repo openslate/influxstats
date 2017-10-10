@@ -2,6 +2,7 @@
 """
 metrics helpers
 """
+import contextlib
 import functools
 import hashlib
 import json
@@ -117,13 +118,28 @@ class StatsClient(statsd.StatsClient):
 
     def __getattribute__(self, attr):
         # attributes that should be fetched from this instance
-        if attr in ('__class__', 'measure_function', 'tags'):
+        if attr in ('__class__', 'extra_tags', 'measure_function', 'tags'):
             return super().__getattribute__(attr)
 
         fn = super().__getattribute__(attr)
 
         # wrap the desired metric function
         return get_metric(fn, self.tags)
+
+    @contextlib.contextmanager
+    def extra_tags(self, tags):
+        """
+        Temporarily adds the given tags
+        """
+        obj = self
+        tags_orig = obj.tags.copy()
+
+        try:
+            obj.tags.update(tags)
+
+            yield
+        finally:
+            obj.tags = tags_orig
 
     def measure_function(self):
         """
