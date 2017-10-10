@@ -46,7 +46,7 @@ def get_client(service, module, **kwargs):
 
     statsd_client = CLIENTS.get(cache_key)
     if statsd_client is None:
-        statsd_client = StatsdClient(service, module, **kwargs)
+        statsd_client = StatsClient(service, module, **kwargs)
 
         CLIENTS[cache_key] = statsd_client
 
@@ -81,7 +81,7 @@ def measure_function(client):
     This places a timer around the entire function and passes in a StatsdFactory instance as the function's `statsd` kwarg
 
     Args:
-        client (StatsdClient): statsd client instance
+        client (StatsClient): statsd client instance
     """
     def decorator(fn):
         _statsd = client
@@ -104,7 +104,7 @@ def measure_function(client):
     return decorator
 
 
-class StatsdClient(statsd.StatsClient):
+class StatsClient(statsd.StatsClient):
     def __init__(self, service, module, **kwargs):
         self.tags = {
             'module': module,
