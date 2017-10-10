@@ -9,6 +9,8 @@ import json
 
 import statsd
 
+from statsd.client import StatsClientBase
+
 # clients indexed by prefix
 CLIENTS = {}
 
@@ -127,14 +129,17 @@ def measure_function(client):
 
 
 class StatsClient(statsd.StatsClient):
+    metrics_methods = [x for x in dir(StatsClientBase) if not x.startswith('_')]
+
     def __init__(self, **kwargs):
         self.tags = kwargs.pop('tags', {})
 
         super().__init__(**kwargs)
 
     def __getattribute__(self, attr):
-        # attributes that should be fetched from this instance
-        if attr in ('__class__', 'extra_tags', 'measure_function', 'tags'):
+        # when a non-metrics method is requested, pass through undecorated
+        metrics_methods = super().__getattribute__('metrics_methods')
+        if attr not in metrics_methods:
             return super().__getattribute__(attr)
 
         fn = super().__getattribute__(attr)
