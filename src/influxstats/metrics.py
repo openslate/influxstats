@@ -46,7 +46,12 @@ def get_client(service, module, **kwargs):
 
     statsd_client = CLIENTS.get(cache_key)
     if statsd_client is None:
-        statsd_client = StatsClient(service, module, **kwargs)
+        tags = {
+            'module': module,
+            'service': service,
+        }
+
+        statsd_client = StatsClient(tags=tags, **kwargs)
 
         CLIENTS[cache_key] = statsd_client
 
@@ -105,11 +110,8 @@ def measure_function(client):
 
 
 class StatsClient(statsd.StatsClient):
-    def __init__(self, service, module, **kwargs):
-        self.tags = {
-            'module': module,
-            'service': service,
-        }
+    def __init__(self, **kwargs):
+        self.tags = kwargs.pop('tags', {})
 
         super().__init__(**kwargs)
 
