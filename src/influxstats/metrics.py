@@ -74,12 +74,25 @@ def get_metric(fn, tags):
             'name': name,
         })
 
-        tags_s = ','.join([f'{k}={v}' for k, v in _tags.items()])
+        tags_s = get_tags_string(_tags)
         full_name = f'{metric},{tags_s}'
 
         return fn(full_name, *args, **kwargs)
 
     return wrapper
+
+
+def get_tags_string(tags):
+    """
+    Returns a comma-delimited k=v string
+
+    Args:
+        tags (dict): A dictionary of key/value pairs
+
+    Returns:
+        str
+    """
+    return ','.join([f'{k}={v}' for k, v in tags.items()])
 
 
 def measure_function(client):
