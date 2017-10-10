@@ -105,7 +105,7 @@ def measure_function(client):
                         'statsd': _statsd,
                     })
 
-                with _statsd.timer('total'):
+                with _statsd.timer('duration'):
                     return fn(*args, **kwargs)
 
         return wrapper
