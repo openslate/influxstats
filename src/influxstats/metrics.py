@@ -63,6 +63,7 @@ def get_metric(fn, tags):
     """
     Wraps the metric function to decorate with additional tags
     """
+    @functools.wraps(fn)
     def wrapper(name, *args, **kwargs):
         # the metric name starts as the name of the function itself
         full_name = fn.__func__.__name__
@@ -94,16 +95,17 @@ def measure_function(client):
 
         @functools.wraps(fn)
         def wrapper(*args, **kwargs):
-            _statsd.incr('calls')  # increment a counter for the function being called
+            with _statsd.extra_tags({'def': fn.__name__}):
+                _statsd.incr('calls')  # increment a counter for the function being called
 
-            # inject statsd into the function call if the function has a statsd kwarg
-            if 'statsd' in fn.__code__.co_varnames:
-                kwargs.update({
-                    'statsd': _statsd,
-                })
+                # inject statsd into the function call if the function has a statsd kwarg
+                if 'statsd' in fn.__code__.co_varnames:
+                    kwargs.update({
+                        'statsd': _statsd,
+                    })
 
-            with _statsd.timer('total'):
-                return fn(*args, **kwargs)
+                with _statsd.timer('total'):
+                    return fn(*args, **kwargs)
 
         return wrapper
 
