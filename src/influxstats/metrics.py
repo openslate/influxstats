@@ -67,7 +67,7 @@ def get_metric(fn, tags):
     @functools.wraps(fn)
     def wrapper(name, *args, **kwargs):
         # the metric name starts as the name of the function itself
-        full_name = fn.__func__.__name__
+        metric = fn.__func__.__name__
 
         _tags = tags.copy()
         _tags.update({
@@ -75,7 +75,7 @@ def get_metric(fn, tags):
         })
 
         tags_s = ','.join([f'{k}={v}' for k, v in _tags.items()])
-        full_name = f'{full_name},{tags_s}'
+        full_name = f'{metric},{tags_s}'
 
         return fn(full_name, *args, **kwargs)
 
