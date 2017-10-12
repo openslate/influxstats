@@ -5,6 +5,7 @@ metrics helpers
 import contextlib
 import functools
 import hashlib
+import inspect
 import json
 
 import statsd
@@ -62,6 +63,14 @@ def get_client(service, module, **kwargs):
     return statsd_client
 
 
+def get_methods_classname(fn):
+    """
+    Returns a class-qualified function name
+    """
+    if inspect.isfunction(fn):
+        return fn.__qualname__.split('.<locals>.', 1)[-1]
+
+
 def get_metric(fn, tags):
     """
     Wraps the metric function to decorate with additional tags
@@ -111,7 +120,13 @@ def measure_function(client):
 
         @functools.wraps(fn)
         def wrapper(*args, **kwargs):
-            with _statsd.extra_tags({'def': fn.__name__}):
+            fn_name = fn.__name__
+
+            fn_clsname = get_methods_classname(fn)
+            if fn_clsname:
+                fn_name = fn_clsname
+
+            with _statsd.extra_tags({'def': fn_name}):
                 _statsd.incr('calls')  # increment a counter for the function being called
 
                 # inject statsd into the function call if the function has a statsd kwarg
