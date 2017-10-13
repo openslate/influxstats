@@ -99,5 +99,5 @@ class MetricsTestCase(TestCase):
 
         TestClass().wrapped_fn()
 
-        incr_mock.assert_called_with('incr,module=tests.test_metrics,service=test,def=TestClass.wrapped_fn,name=calls')
-        timer_mock.assert_called_with('timer,module=tests.test_metrics,service=test,def=TestClass.wrapped_fn,name=duration')
+        incr_mock.assert_called_with('incr,module=tests.test_metrics,service=test,def=wrapped_fn,class=TestClass,name=calls')
+        timer_mock.assert_called_with('timer,module=tests.test_metrics,service=test,def=wrapped_fn,class=TestClass,name=duration')

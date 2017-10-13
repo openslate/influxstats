@@ -68,7 +68,7 @@ def get_methods_classname(fn):
     Returns a class-qualified function name
     """
     if inspect.isfunction(fn):
-        return fn.__qualname__.split('.<locals>.', 1)[-1]
+        return fn.__qualname__.split('.<locals>.', 1)[-1].rsplit('.', 1)[0]
 
 
 def get_metric(fn, tags):
@@ -120,13 +120,17 @@ def measure_function(client):
 
         @functools.wraps(fn)
         def wrapper(*args, **kwargs):
-            fn_name = fn.__name__
+            extra_tags = {
+                'def': fn.__name__,
+            }
 
             fn_clsname = get_methods_classname(fn)
-            if fn_clsname:
-                fn_name = fn_clsname
+            if fn_clsname and fn_clsname != extra_tags['def']:
+                extra_tags.update({
+                    'class': fn_clsname
+                })
 
-            with _statsd.extra_tags({'def': fn_name}):
+            with _statsd.extra_tags(extra_tags):
                 _statsd.incr('calls')  # increment a counter for the function being called
 
                 # inject statsd into the function call if the function has a statsd kwarg
