@@ -106,7 +106,7 @@ def get_tags_string(tags):
     return ','.join([f'{k}={v}' for k, v in tags.items()])
 
 
-def measure_function(client):
+def measure_function(client, extra_tags=None):
     """
     Decorator to measure a function
 
@@ -114,15 +114,20 @@ def measure_function(client):
 
     Args:
         client (StatsClient): statsd client instance
+        extra_tags (dict): optional extra tags to add to metrics
     """
     def decorator(fn):
         _statsd = client
+        _extra_tags = extra_tags or {}
 
         @functools.wraps(fn)
         def wrapper(*args, **kwargs):
             extra_tags = {
                 'def': fn.__name__,
             }
+
+            # add any additional tags passed into measure_function()
+            extra_tags.update(_extra_tags)
 
             fn_clsname = get_methods_classname(fn)
             if fn_clsname and fn_clsname != extra_tags['def']:
@@ -181,8 +186,8 @@ class StatsClient(statsd.StatsClient):
         finally:
             obj.tags = tags_orig
 
-    def measure_function(self):
+    def measure_function(self, extra_tags=None):
         """
         Returns a decorator to measure the function being decorated
         """
-        return measure_function(self)
+        return measure_function(self, extra_tags=extra_tags)

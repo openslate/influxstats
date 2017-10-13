@@ -101,3 +101,17 @@ class MetricsTestCase(TestCase):
 
         incr_mock.assert_called_with('incr,module=tests.test_metrics,service=test,def=wrapped_fn,class=TestClass,name=calls')
         timer_mock.assert_called_with('timer,module=tests.test_metrics,service=test,def=wrapped_fn,class=TestClass,name=duration')
+
+    def test_measure_function_extra_tags(self, *mocks):
+        incr_mock = self._setup_incr(*mocks)
+        timer_mock = self._setup_timer(*mocks)
+
+        client = self.client
+
+        @client.measure_function(extra_tags={'foo': 'one'})
+        def wrapped_fn():
+            pass
+
+        wrapped_fn()
+
+        incr_mock.assert_called_with('incr,module=tests.test_metrics,service=test,def=wrapped_fn,foo=one,name=calls')
