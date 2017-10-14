@@ -191,3 +191,12 @@ class StatsClient(statsd.StatsClient):
         Returns a decorator to measure the function being decorated
         """
         return measure_function(self, extra_tags=extra_tags)
+
+    def with_extra_tags(self, tags):
+        """
+        Returns a new StatsClient instance with existing tags and the new ones given
+        """
+        all_tags = self.tags.copy()
+        all_tags.update(tags)
+
+        return self.__class__(tags=all_tags)

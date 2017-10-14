@@ -25,6 +25,9 @@ class MetricsTestCase(TestCase):
         return get_client('test', __name__)
 
     def test_get_client(self, *mocks):
+        """
+        Ensure the client is the wrapped StatsClient
+        """
         client = self.client
 
         self.assertEqual(StatsClient, client.__class__)
@@ -51,6 +54,9 @@ class MetricsTestCase(TestCase):
         incr_mock.assert_called_with('incr,module=tests.test_metrics,service=test,name=fool')
 
     def test_emit_no_tags(self, *mocks):
+        """
+        A client with no extra tags
+        """
         incr_mock = self._setup_incr(*mocks)
 
         client = StatsClient()
@@ -115,3 +121,31 @@ class MetricsTestCase(TestCase):
         wrapped_fn()
 
         incr_mock.assert_called_with('incr,module=tests.test_metrics,service=test,def=wrapped_fn,foo=one,name=calls')
+
+    def test_with_extra_tags(self, *mocks):
+        incr_mock = self._setup_incr(*mocks)
+
+        client = self.client
+
+        # this call has the base client tags
+        client.incr('client')
+
+        incr_mock.assert_called_with('incr,module=tests.test_metrics,service=test,name=client')
+
+        # create a new client instance with an additional tag
+        client2 = client.with_extra_tags({'another': 'true'})
+        client2.incr('client2')
+
+        incr_mock.assert_called_with('incr,module=tests.test_metrics,service=test,another=true,name=client2')
+
+        # create a new client instance on top of the second client
+        client3 = client2.with_extra_tags({'yet_another': 'yay'})
+        client3.incr('client3')
+
+        incr_mock.assert_called_with('incr,module=tests.test_metrics,service=test,another=true,yet_another=yay,name=client3')
+
+        # create a different instance on top of the base client
+        client2b = client.with_extra_tags({'another': 'true'})
+        client2b.incr('client2b')
+
+        incr_mock.assert_called_with('incr,module=tests.test_metrics,service=test,another=true,name=client2b')
