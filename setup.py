@@ -11,7 +11,7 @@ setup(
     url='https://github.com/openslate/influxstats',
     author='Openslate',
     author_email='code@osslabs.net',
-    version='0.0.7',
+    version='0.0.8',
     packages=packages,  # include all packages under src
     package_dir={'':'src'},   # tell distutils packages are under src
 
