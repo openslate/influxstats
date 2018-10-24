@@ -10,7 +10,10 @@ import json
 
 import statsd
 
-from statsd.client import StatsClientBase
+try:
+    from statsd.client import StatsClientBase
+except ImportError:
+    from statsd.client.base import StatsClientBase
 
 # clients indexed by prefix
 CLIENTS = {}
