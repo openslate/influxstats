@@ -3,6 +3,7 @@
 metrics helpers
 """
 import contextlib
+import datetime
 import functools
 import hashlib
 import inspect
@@ -109,7 +110,7 @@ def get_tags_string(tags):
     return ','.join([f'{k}={v}' for k, v in tags.items()])
 
 
-def measure_function(client, extra_tags=None):
+def measure_function(client, extra_tags=None, logger_fn=None):
     """
     Decorator to measure a function
 
@@ -118,6 +119,8 @@ def measure_function(client, extra_tags=None):
     Args:
         client (StatsClient): statsd client instance
         extra_tags (dict): optional extra tags to add to metrics
+        logger_fn: a logging function, e.g. logging.getLogger().info;
+                   when set, logs before and after the function call will be emitted
     """
     def decorator(fn):
         _statsd = client
@@ -147,8 +150,24 @@ def measure_function(client, extra_tags=None):
                         'statsd': _statsd,
                     })
 
-                with _statsd.timer('duration'):
-                    return fn(*args, **kwargs)
+                t0 = None
+                if logger_fn:
+                    t0 = datetime.datetime.utcnow()
+
+                    logger_fn(f'measure_function begin, t0={t0}, fn={fn}, args={args}, kwargs={kwargs}')
+
+                try:
+                    with _statsd.timer('duration'):
+                        return fn(*args, **kwargs)
+                finally:
+                    if logger_fn:
+                        t1 = datetime.datetime.utcnow()
+                        delta = t1 - t0
+
+                        logger_fn((
+                            f'measure_function end, t1={t1}, delta={delta.total_seconds()}, '
+                            f'fn={fn}, args={args}, kwargs={kwargs}'
+                        ))
 
         return wrapper
 
