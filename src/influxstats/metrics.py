@@ -16,6 +16,8 @@ try:
 except ImportError:
     from statsd.client.base import StatsClientBase
 
+from .logging import get_logger
+
 # clients indexed by prefix
 CLIENTS = {}
 
@@ -106,7 +108,7 @@ def get_tags_string(tags):
     return ",".join([f"{k}={v}" for k, v in tags.items()])
 
 
-def measure_function(client, extra_tags=None, logger_fn=None):
+def measure_function(client: "StatsClient", extra_tags: dict = None, log: bool = False):
     """
     Decorator to measure a function
 
@@ -115,8 +117,7 @@ def measure_function(client, extra_tags=None, logger_fn=None):
     Args:
         client (StatsClient): statsd client instance
         extra_tags (dict): optional extra tags to add to metrics
-        logger_fn: a logging function, e.g. logging.getLogger().info;
-                   when set, logs before and after the function call will be emitted
+        log: whether to make logger calls, default False
     """
 
     def decorator(fn):
@@ -134,6 +135,10 @@ def measure_function(client, extra_tags=None, logger_fn=None):
             if fn_clsname and fn_clsname != extra_tags["def"]:
                 extra_tags.update({"class": fn_clsname})
 
+            logger = None
+            if log:
+                logger = get_logger(rewind_stack=2)
+
             with _statsd.extra_tags(extra_tags):
                 _statsd.incr(
                     "calls"
@@ -147,7 +152,7 @@ def measure_function(client, extra_tags=None, logger_fn=None):
                 if logger_fn:
                     t0 = datetime.datetime.utcnow()
 
-                    logger_fn(
+                    logger.info(
                         f"measure_function begin, t0={t0}, fn={fn}, args={args}, kwargs={kwargs}"
                     )
 
@@ -159,10 +164,10 @@ def measure_function(client, extra_tags=None, logger_fn=None):
                         t1 = datetime.datetime.utcnow()
                         delta = t1 - t0
 
-                        logger_fn(
+                        logger.info(
                             (
-                                f"measure_function end, t1={t1}, delta={delta.total_seconds()}, "
-                                f"fn={fn}, args={args}, kwargs={kwargs}"
+                                f"measure_function end, t0={t0}, fn={fn}, args={args}, kwargs={kwargs},"
+                                " t1={t1}, delta={delta.total_seconds()}"
                             )
                         )
 
