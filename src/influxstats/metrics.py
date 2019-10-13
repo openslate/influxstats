@@ -33,7 +33,7 @@ def get_cache_key(args, kwargs):
         str: the cache key
     """
     sha = hashlib.sha256()
-    sha.update(json.dumps([args, kwargs]).encode('utf8'))
+    sha.update(json.dumps([args, kwargs]).encode("utf8"))
 
     return sha.hexdigest()
 
@@ -54,11 +54,8 @@ def get_client(service, module, **kwargs):
 
     statsd_client = CLIENTS.get(cache_key)
     if statsd_client is None:
-        tags = kwargs.pop('tags', {})
-        tags.update({
-            'module': module,
-            'service': service,
-        })
+        tags = kwargs.pop("tags", {})
+        tags.update({"module": module, "service": service})
 
         statsd_client = StatsClient(tags=tags, **kwargs)
 
@@ -72,25 +69,24 @@ def get_methods_classname(fn):
     Returns a class-qualified function name
     """
     if inspect.isfunction(fn):
-        return fn.__qualname__.split('.<locals>.', 1)[-1].rsplit('.', 1)[0]
+        return fn.__qualname__.split(".<locals>.", 1)[-1].rsplit(".", 1)[0]
 
 
 def get_metric(fn, tags):
     """
     Wraps the metric function to decorate with additional tags
     """
+
     @functools.wraps(fn)
     def wrapper(name, *args, **kwargs):
         # the metric name starts as the name of the function itself
         metric = fn.__func__.__name__
 
         _tags = tags.copy()
-        _tags.update({
-            'name': name,
-        })
+        _tags.update({"name": name})
 
         tags_s = get_tags_string(_tags)
-        full_name = f'{metric},{tags_s}'
+        full_name = f"{metric},{tags_s}"
 
         return fn(full_name, *args, **kwargs)
 
@@ -107,7 +103,7 @@ def get_tags_string(tags):
     Returns:
         str
     """
-    return ','.join([f'{k}={v}' for k, v in tags.items()])
+    return ",".join([f"{k}={v}" for k, v in tags.items()])
 
 
 def measure_function(client, extra_tags=None, logger_fn=None):
@@ -122,52 +118,53 @@ def measure_function(client, extra_tags=None, logger_fn=None):
         logger_fn: a logging function, e.g. logging.getLogger().info;
                    when set, logs before and after the function call will be emitted
     """
+
     def decorator(fn):
         _statsd = client
         _extra_tags = extra_tags or {}
 
         @functools.wraps(fn)
         def wrapper(*args, **kwargs):
-            extra_tags = {
-                'def': fn.__name__,
-            }
+            extra_tags = {"def": fn.__name__}
 
             # add any additional tags passed into measure_function()
             extra_tags.update(_extra_tags)
 
             fn_clsname = get_methods_classname(fn)
-            if fn_clsname and fn_clsname != extra_tags['def']:
-                extra_tags.update({
-                    'class': fn_clsname
-                })
+            if fn_clsname and fn_clsname != extra_tags["def"]:
+                extra_tags.update({"class": fn_clsname})
 
             with _statsd.extra_tags(extra_tags):
-                _statsd.incr('calls')  # increment a counter for the function being called
+                _statsd.incr(
+                    "calls"
+                )  # increment a counter for the function being called
 
                 # inject statsd into the function call if the function has a statsd kwarg
-                if 'statsd' in fn.__code__.co_varnames:
-                    kwargs.update({
-                        'statsd': _statsd,
-                    })
+                if "statsd" in fn.__code__.co_varnames:
+                    kwargs.update({"statsd": _statsd})
 
                 t0 = None
                 if logger_fn:
                     t0 = datetime.datetime.utcnow()
 
-                    logger_fn(f'measure_function begin, t0={t0}, fn={fn}, args={args}, kwargs={kwargs}')
+                    logger_fn(
+                        f"measure_function begin, t0={t0}, fn={fn}, args={args}, kwargs={kwargs}"
+                    )
 
                 try:
-                    with _statsd.timer('duration'):
+                    with _statsd.timer("duration"):
                         return fn(*args, **kwargs)
                 finally:
                     if logger_fn:
                         t1 = datetime.datetime.utcnow()
                         delta = t1 - t0
 
-                        logger_fn((
-                            f'measure_function end, t1={t1}, delta={delta.total_seconds()}, '
-                            f'fn={fn}, args={args}, kwargs={kwargs}'
-                        ))
+                        logger_fn(
+                            (
+                                f"measure_function end, t1={t1}, delta={delta.total_seconds()}, "
+                                f"fn={fn}, args={args}, kwargs={kwargs}"
+                            )
+                        )
 
         return wrapper
 
@@ -175,16 +172,16 @@ def measure_function(client, extra_tags=None, logger_fn=None):
 
 
 class StatsClient(statsd.StatsClient):
-    metrics_methods = [x for x in dir(StatsClientBase) if not x.startswith('_')]
+    metrics_methods = [x for x in dir(StatsClientBase) if not x.startswith("_")]
 
     def __init__(self, **kwargs):
-        self.tags = kwargs.pop('tags', {})
+        self.tags = kwargs.pop("tags", {})
 
         super().__init__(**kwargs)
 
     def __getattribute__(self, attr):
         # when a non-metrics method is requested, pass through undecorated
-        metrics_methods = super().__getattribute__('metrics_methods')
+        metrics_methods = super().__getattribute__("metrics_methods")
         if attr not in metrics_methods:
             return super().__getattribute__(attr)
 
