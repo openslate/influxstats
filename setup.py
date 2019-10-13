@@ -61,7 +61,7 @@ setup(
     description="Create consistent stats across your entire codebase",
     long_description=readme(),
     long_description_content_type="text/markdown",
-    version="0.0.0",
+    use_scm_version=True,
     packages=packages,  # include all packages under src
     package_dir={"": "src"},  # tell distutils packages are under src
     install_requires=get_required_packages(),
