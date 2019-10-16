@@ -149,7 +149,7 @@ def measure_function(client: "StatsClient", extra_tags: dict = None, log: bool =
                     kwargs.update({"statsd": _statsd})
 
                 t0 = None
-                if logger_fn:
+                if logger:
                     t0 = datetime.datetime.utcnow()
 
                     logger.info(
@@ -160,7 +160,7 @@ def measure_function(client: "StatsClient", extra_tags: dict = None, log: bool =
                     with _statsd.timer("duration"):
                         return fn(*args, **kwargs)
                 finally:
-                    if logger_fn:
+                    if logger:
                         t1 = datetime.datetime.utcnow()
                         delta = t1 - t0
 
