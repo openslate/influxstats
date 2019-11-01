@@ -3,6 +3,7 @@
 metrics helpers
 """
 import contextlib
+import datetime
 import functools
 import hashlib
 import inspect
@@ -14,6 +15,8 @@ try:
     from statsd.client import StatsClientBase
 except ImportError:
     from statsd.client.base import StatsClientBase
+
+from .logging import get_logger
 
 # clients indexed by prefix
 CLIENTS = {}
@@ -105,7 +108,7 @@ def get_tags_string(tags):
     return ",".join([f"{k}={v}" for k, v in tags.items()])
 
 
-def measure_function(client, extra_tags=None):
+def measure_function(client: "StatsClient", extra_tags: dict = None, log: bool = False):
     """
     Decorator to measure a function
 
@@ -114,6 +117,7 @@ def measure_function(client, extra_tags=None):
     Args:
         client (StatsClient): statsd client instance
         extra_tags (dict): optional extra tags to add to metrics
+        log: whether to make logger calls, default False.  when logging, the logs are fired relative to the caller's scope
     """
 
     def decorator(fn):
@@ -131,6 +135,10 @@ def measure_function(client, extra_tags=None):
             if fn_clsname and fn_clsname != extra_tags["def"]:
                 extra_tags.update({"class": fn_clsname})
 
+            logger = None
+            if log:
+                logger = get_logger(rewind_stack=2)
+
             with _statsd.extra_tags(extra_tags):
                 _statsd.incr(
                     "calls"
@@ -140,8 +148,28 @@ def measure_function(client, extra_tags=None):
                 if "statsd" in fn.__code__.co_varnames:
                     kwargs.update({"statsd": _statsd})
 
-                with _statsd.timer("duration"):
-                    return fn(*args, **kwargs)
+                t0 = None
+                if logger:
+                    t0 = datetime.datetime.utcnow()
+
+                    logger.info(
+                        f"measure_function begin, t0={t0}, fn={fn}, args={args}, kwargs={kwargs}"
+                    )
+
+                try:
+                    with _statsd.timer("duration"):
+                        return fn(*args, **kwargs)
+                finally:
+                    if logger:
+                        t1 = datetime.datetime.utcnow()
+                        delta = t1 - t0
+
+                        logger.info(
+                            (
+                                f"measure_function end, t0={t0}, fn={fn}, args={args}, kwargs={kwargs},"
+                                " t1={t1}, delta={delta.total_seconds()}"
+                            )
+                        )
 
         return wrapper
 
