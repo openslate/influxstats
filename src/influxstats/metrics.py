@@ -87,6 +87,11 @@ def get_metric(fn, tags):
         _tags = tags.copy()
         _tags.update({"name": name})
 
+        # if tags are passed in as a kwarg, add them to the metric's name
+        kwargs_tags = kwargs.pop("tags")
+        if kwargs_tags:
+            _tags.update(kwargs_tags)
+
         tags_s = get_tags_string(_tags)
         full_name = f"{metric},{tags_s}"
 
